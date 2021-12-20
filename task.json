@@ -1,0 +1,26 @@
+{
+  "type": "task-submit",
+  "id": "<int:id>",
+  "createdAt": "2021-12-19T16:08:33.475628Z",
+  "name": "Test",
+  "dockerImage": "rosenisep/rosen-processing",
+  "dockerImageTag": "latest",
+  "subTasks": [
+    {
+      "operation": "investigate",
+      "arguments": {
+        "--infile": "input.txt"
+      }
+    },
+    {
+      "operation": "calculate",
+      "arguments": {}
+    },
+    {
+      "operation": "conclude",
+      "arguments": {
+        "--outfile": "output.txt"
+      }
+    }
+  ]
+}
