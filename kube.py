@@ -53,3 +53,9 @@ class Kubernetes:
                 if pod.status.phase == "Running":
                     self.test_manager.results[_id]['K06'] = False
 
+    def cleanup(self):
+        for _id in self.test_manager.ids:
+            # delete scheduler
+            self.client.delete_namespaced_pod(f'scheduler-{_id}', 'schedulers')
+            # ...and delete associated subtask namespace
+            self.client.delete_namespace(f'subtask-{_id}')
