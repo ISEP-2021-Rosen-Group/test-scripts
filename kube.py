@@ -1,12 +1,10 @@
 import traceback
 
-import kubernetes
 from kubernetes import config, client
-from stress import TestManager
 
 
 class Kubernetes:
-    def __init__(self, test_manager: TestManager):
+    def __init__(self, args, test_manager):
         config.load_kube_config()
         self.test_manager = test_manager
         self.client = client.CoreV1Api()
