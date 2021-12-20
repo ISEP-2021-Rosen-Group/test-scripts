@@ -19,7 +19,7 @@ class TestManager:
                     "K03": False,
                     "K04": False,
                     "K05": False,
-                    "K06": False,
+                    "K06": True,
                 }})
 
     def generate_ids(self) -> None:

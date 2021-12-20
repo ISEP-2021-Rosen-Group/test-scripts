@@ -29,7 +29,6 @@ class Kubernetes:
             self.test_manager.results[_id]['K01'] = True
             # check for k05
             self.test_manager.results[_id]['K05'] = pod.status.phase == "Succeeded"
-            # TODO has been wonky in the past, check if it works as intended (the succeed status phase)
 
     def k02_03_04_06(self) -> None:
         for _id in self.test_manager.results.keys():
@@ -41,5 +40,18 @@ class Kubernetes:
                 print(f"namespace not found, trace:\n")
                 traceback.print_exc()
                 continue
-            # if there is >=1 pod, k02 is likely satisfied
-            # TODO K02, K03, K04, K06
+            # for all pods in the name space check:
+            # [K02] check logs for keyword "Investigate"
+            # [K03] check logs for keyword "Calculate"
+            # [K04] check logs for keyword "Conclude"
+            for pod in pods:
+                logs = self.client.read_namespaced_pod_log(name=pod.metadata.name, namespace=f'subtask-{_id}')
+                if "Investigate" in logs:
+                    self.test_manager.results[_id]['K02'] = True
+                if "Calculate" in logs:
+                    self.test_manager.results[_id]['K03'] = True
+                if "Conclude" in logs:
+                    self.test_manager.results[_id]['K04'] = True
+                if pod.status.phase == "Running":
+                    self.test_manager.results[_id]['K06'] = False
+

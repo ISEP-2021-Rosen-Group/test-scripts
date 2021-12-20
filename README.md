@@ -1,7 +1,7 @@
 # test-scripts
 ## What does it do?
 Testing for the following on a specified number of tasks:
-- \[R01\] The task is consumed by the schedule controller.
+- \[R01\] The task is consumed by the designated scheduler
 - \[R02\] Two message queues are created for the scheduler
 - \[K01\] A scheduler is created in the system.
 - \[K02\] The investigation subtask is started
