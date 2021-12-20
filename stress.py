@@ -1,4 +1,5 @@
 import argparse
+import csv
 import time
 
 
@@ -28,8 +29,13 @@ class TestManager:
             self.ids.append(_id)
 
     def generate_csv(self, outfile: str) -> None:
-        pass
-        # TODO implement
+        file = open(outfile, "w")
+        w = csv.DictWriter(file, ['id'] + list(self.results[initial].keys()))
+        for key, val in self.results:
+            row = {'id': key}
+            row.update(val)
+            w.writerow(row)
+        file.close()
 
 
 parser = argparse.ArgumentParser(description="Stress test the cluster and returns some metrics")
@@ -53,4 +59,4 @@ rabbitmq.do_publish()
 time.sleep(args['runtime'] * 60)
 rabbitmq.do_tests()
 kubernetes.do_tests()
-testManager.generate_csv(args['out'])
+testManager.generate_csv(args['outfile'])
