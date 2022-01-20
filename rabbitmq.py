@@ -1,12 +1,29 @@
+import http
 import json
 import threading
 import time
+from base64 import b64encode
 from datetime import datetime
+from http.client import HTTPConnection
 
 import pika
 
 
 class RabbitMQ:
+    class RESTHandler:
+        def __init__(self, user, password, host, port):
+            self.user = user
+            self.password = password
+            self.host = host
+            self.port = port
+
+        def get_queue_names(self) -> set[str]:
+            user_and_pass = b64encode(bytes(f"{self.user}:{self.password}", "utf-8")).decode("ascii")
+            headers = {'Authorization': 'Basic %s' % user_and_pass}
+            conn = HTTPConnection(f"{self.host}:{self.port}")
+            conn.request("GET", "/api/queues", headers=headers)
+            response = json.loads(conn.getresponse().read())
+            return set(map(lambda x: x['name'], response))
 
     def __init__(self, args, test_manager):
         super(RabbitMQ, self).__init__()
@@ -70,4 +87,58 @@ class RabbitMQ:
                     {"operation": "conclude", "arguments": {"--outfile": "output.txt"}}
                 ]}), channel=channel)
 
-    # TODO R01, R02
+    def get_all_unconsumed_tasks(self):
+        channel = self.rabbitmq_connection.channel()
+        messages_available = True
+        frames = set()
+        messages = set()
+        while messages_available:
+            mf, hf, body = channel.basic_get(self.args.queue_name, auto_ack=False)
+            if mf:
+                frames.add(mf)
+                messages.add(body)
+            else:
+                messages_available = False
+        map(lambda frame: channel.basic_nack(frame.delivery_tag), frames)
+        channel.close()
+        return messages
+
+    def do_tests(self):
+        unconsumed_task_ids = set(map(lambda task: int(json.loads(task)["id"]), self.get_all_unconsumed_tasks()))
+        queue_names = RabbitMQ.RESTHandler(
+            user=self.args.user,
+            password=self.args.password,
+            port=self.args.api_port,
+            host=self.args.host
+        ).get_queue_names()
+        for _id in self.test_manager.results.keys():
+            # check for r01
+            if _id in unconsumed_task_ids:
+                self.test_manager.results[_id]['R01'] = False
+            # check for r02
+            if f"subtasks-com-dev-{_id}" in queue_names and f"subtasks-dev-{_id}" in queue_names:
+                self.test_manager.results[_id]['R02'] = True
+
+    def cleanup(self):
+        # delete all unconsumed tasks
+        channel = self.rabbitmq_connection.channel()
+        messages_available = True
+        frames_to_ack = set()
+        frames_to_nack = set()
+        while messages_available:
+            mf, hf, body = channel.basic_get(self.args.queue_name, auto_ack=False)
+            if mf:
+                _id = int(json.loads(body)["id"])
+                if _id in self.test_manager.results.keys():
+                    frames_to_ack.add(mf)
+                else:
+                    frames_to_nack.add(mf)
+            else:
+                messages_available = False
+        map(lambda frame: channel.basic_nack(frame.delivery_tag), frames_to_nack)
+        map(lambda frame: channel.basic_ack(frame.delivery_tag), frames_to_ack)
+        # delete queues
+        for _id in self.test_manager.results.keys():
+            channel.queue_delete(f"subtasks-com-dev-{_id}")
+            channel.queue_delete(f"subtasks-dev-{_id}")
+        channel.close()
